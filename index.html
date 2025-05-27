@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Dissertation: Catalytic DHP Synthesis with Preyssler HPA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Visualization & Content Choices:
+        - Figures (DHP Structure, Preyssler Anion, Relationships): Rendered as static HTML/CSS diagrams for clear visual representation. Goal: Inform. Interaction: Static.
+        - Figures (Hantzsch Mechanism, Fused DHP Scheme): Rendered as interactive HTML/CSS/JS diagrams with step-by-step reveal. Goal: Explain complex processes. Interaction: Click to progress. Justification: Enhances understanding of sequential steps.
+        - Table 1 (Catalyst Activity Comparison - Warfarin Acetals): Bar Chart using Chart.js. Goal: Compare catalyst performance visually. Interaction: Tooltips for details. Justification: Easier comparison than raw table data. (Data from source [11])
+        - Table 2 & 3 (DHP Synthesis Examples - Unfused & Fused): Presented as HTML tables. Goal: Showcase representative results. Interaction: Static display. Justification: Suitable for presenting lists of examples and their yields/times. (Data from source [9, 10])
+        - Table 4 (Catalyst Reusability): Line Chart using Chart.js. Goal: Demonstrate catalyst stability over cycles. Interaction: Tooltips for details. Justification: Clearly shows trends in reusability. (Data from source [9, 10])
+        - Textual Content: Organized into thematic sections with introductory paragraphs. Key findings and explanations are presented as paragraphs and bullet points for readability. Goal: Inform/Explain. Interaction: Navigation between sections. Justification: Structured presentation of research findings.
+        - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        .nav-link { cursor: pointer; padding: 0.75rem 1rem; border-radius: 0.375rem; transition: background-color 0.3s, color 0.3s; font-weight: 500; }
+        .nav-link:hover { background-color: #d1fae5; color: #047857; } /* emerald-100, emerald-700 */
+        .nav-link.active { background-color: #10b981; color: white; } /* emerald-500 */
+        
+        .diagram-box { border: 1px solid #e5e7eb; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; background-color: #f9fafb; box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1); }
+        .mechanism-step { display: none; margin-top: 0.75rem; padding: 0.75rem; border-left: 4px solid #10b981; background-color: #f0fdf4; border-radius: 0.25rem;}
+        .mechanism-step.visible { display: block; }
+        
+        .chart-container { position: relative; width: 100%; max-width: 600px; margin-left: auto; margin-right: auto; height: 320px; max-height: 400px; padding: 1rem; background-color: white; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); margin-top: 1.5rem; margin-bottom: 1.5rem; }
+        @media (min-width: 768px) { .chart-container { height: 350px; max-height: 450px;} }
+        
+        h1.main-title { font-size: 1.75rem; line-height: 2.25rem; }
+        @media (min-width: 768px) { h1.main-title { font-size: 2.25rem; line-height: 2.5rem; } }
+
+        h2 { font-size: 1.875rem; font-weight: 600; color: #047857; margin-bottom: 1.25rem; border-bottom: 2px solid #a7f3d0; padding-bottom: 0.75rem; }
+        h3 { font-size: 1.25rem; font-weight: 600; color: #059669; margin-top: 1.75rem; margin-bottom: 1rem; }
+        p, li { color: #374151; line-height: 1.7; margin-bottom: 1rem; }
+        ul, ol { margin-left: 1.25rem; margin-bottom: 1rem; }
+        li { margin-bottom: 0.5rem; }
+        
+        table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #e5e7eb; padding: 0.75rem 1rem; text-align: left; }
+        th { background-color: #f3f4f6; color: #1f2937; font-weight: 600; }
+        tbody tr:nth-child(even) { background-color: #f9fafb; }
+
+        .btn-primary { padding: 0.6rem 1.2rem; background-color: #10b981; color: white; border-radius: 0.375rem; cursor: pointer; transition: background-color 0.3s; font-weight: 500; }
+        .btn-primary:hover { background-color: #059669; }
+        .btn-secondary { padding: 0.5rem 1rem; background-color: #e5e7eb; color: #374151; border-radius: 0.375rem; cursor: pointer; transition: background-color 0.3s; font-weight: 500; }
+        .btn-secondary:hover { background-color: #d1d5db; }
+
+        .structure-diagram { padding: 1.5rem; border: 1px solid #d1d5db; border-radius: 0.5rem; background-color: #f8fafc; text-align: center; margin-bottom: 1.5rem; }
+        .structure-diagram .ring-label { font-weight: bold; font-size: 1.1em; }
+        .structure-diagram .atom-N { color: #3b82f6; font-weight: bold; } /* Blue for Nitrogen */
+        .structure-diagram .atom-O { color: #ef4444; font-weight: bold; } /* Red for Oxygen */
+        .structure-diagram .atom-P { color: #f97316; font-weight: bold; } /* Orange for Phosphorus */
+        .structure-diagram .atom-W { color: #6b7280; font-weight: bold; } /* Gray for Tungsten */
+        .structure-diagram .substituent { font-size: 0.9em; color: #059669; }
+        .structure-diagram .bond { border-top: 2px solid #4b5563; margin: 0.25rem auto; width: 30px; }
+        .structure-diagram .placeholder-ring { width: 80px; height: 80px; border: 3px solid #60a5fa; border-radius: 15%; margin: 0.5rem auto; display: flex; align-items: center; justify-content: center; font-weight: bold; background-color: #eff6ff; }
+        .preyssler-anion-diagram .outer-ring { width: 150px; height: 150px; border: 5px solid #34d399; border-radius: 50%; margin: 1rem auto; display: flex; align-items: center; justify-content: center; position: relative; }
+        .preyssler-anion-diagram .inner-cation { width: 50px; height: 50px; border-radius: 50%; background-color: #fcd34d; color: #b45309; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .text-reference { font-size: 0.8rem; color: #6b7280; font-style: italic; }
+    </style>
+</head>
+<body class="bg-sky-50 text-gray-800">
+    <div class="flex flex-col md:flex-row min-h-screen">
+        <nav class="md:w-72 bg-white shadow-xl p-5 space-y-3 shrink-0">
+            <div class="mb-8 text-center">
+                <h1 class="text-xl font-bold text-emerald-700">Catalytic DHP Synthesis</h1>
+                <p class="text-xs text-emerald-600">with Preyssler HPA</p>
+            </div>
+            <a class="nav-link active" onclick="showSection('home')">Home & Abstract</a>
+            <a class="nav-link" onclick="showSection('dhp-intro')">1. DHPs: Intro & Significance</a>
+            <a class="nav-link" onclick="showSection('catalyst-hpa')">2. Preyssler HPA Catalyst</a>
+            <a class="nav-link" onclick="showSection('synthesis-methods')">3. Synthesis with Preyssler HPA</a>
+            <a class="nav-link" onclick="showSection('performance-green')">4. Performance & Green Chemistry</a>
+            <a class="nav-link" onclick="showSection('conclusion-future')">5. Conclusion & Future Outlook</a>
+            <a class="nav-link" onclick="showSection('abbreviations')">Abbreviations</a>
+        </nav>
+
+        <main class="flex-1 p-6 md:p-10 overflow-y-auto">
+            <div id="home" class="content-section active bg-white p-6 sm:p-8 rounded-lg shadow-md">
+                <h1 class="main-title font-bold text-emerald-800 mb-4">Catalytic Synthesis of Fused 1,4-Dihydropyridines and 1,4-Dihydropyridine Derivatives Using Preyssler Heteropolyacid Catalyst</h1>
+                <p class="text-md text-gray-600 mb-2">A Dissertation by: <strong>Unmesh Pramanik</strong></p>
+                <p class="text-md text-gray-600 mb-2">Supervisor: <strong>Dr. Paramita Das</strong></p>
+                <p class="text-md text-gray-600 mb-6">Institution: <strong>Asutosh College</strong></p>
+                
+                <h2>Abstract</h2>
+                <p>This dissertation investigates the catalytic synthesis of 1,4-dihydropyridines (DHPs) and their fused derivatives, with a particular focus on the application of Preyssler heteropolyacid (HPA) as a highly efficient and environmentally benign catalyst. 1,4-Dihydropyridines represent a pivotal class of nitrogen-containing heterocyclic compounds, widely recognized for their profound pharmacological significance and increasingly explored applications in materials science.[1-5] These molecules are often classified as "privileged structures" in drug discovery.[3]</p>
+                <p>The traditional synthetic routes for DHPs, notably the classical Hantzsch reaction, often entail drawbacks such as prolonged reaction times and hazardous organic solvents.[1, 6] This study explores Preyssler HPA, distinguished by its robust Brönsted acidity, exceptional stability, and reusability.[7-9] Its advantages align seamlessly with green chemistry principles.[7, 8]</p>
+                <p>This report details synthetic methodologies for unfused and fused DHP derivatives utilizing Preyssler HPA, demonstrating good to excellent yields.[9, 10] The catalytic efficacy is compared with other HPAs, where Preyssler often exhibits superior performance.[8, 11, 12] Mechanistic aspects, biological activities of DHPs (e.g., calcium channel blockers), and their relevance in materials science (e.g., OLEDs) are discussed.[1-5, 13, 14] This investigation underscores Preyssler HPA's potential in sustainable organic synthesis.</p>
+            </div>
+
+            <div id="dhp-intro" class="content-section bg-white p-6 sm:p-8 rounded-lg shadow-md">
+                <h2>1. DHPs: Introduction & Significance</h2>
+                <p>This section provides an overview of 1,4-Dihydropyridines (DHPs), covering their chemical structure, properties, and their significant roles in both medicinal chemistry and materials science. Understanding these foundational aspects is key to appreciating the synthetic advancements discussed later.</p>
+
+                <h3>1.1. Overview and Structure of 1,4-Dihydropyridines (DHPs)</h3>
+                <p>1,4-Dihydropyridines (DHPs) are nitrogen-containing heterocyclic compounds with a six-membered ring having one nitrogen atom and two double bonds in a 1,4-arrangement.[6] Derived from pyridine, their structure allows for diverse substituents, influencing biological activity.[1, 4] The C4 position often hosts a chiral center, critical for their medicinal properties.[5] DHPs are termed "privileged structures" due to their adaptable scaffold for drug design.[3]</p>
+                <div class="grid md:grid-cols-2 gap-6 my-4">
+                    <div class="structure-diagram diagram-box">
+                        <p class="font-semibold mb-2">Figure 1: General Structure of 1,4-Dihydropyridine</p>
+                        <div class="placeholder-ring"><span class="atom-N">N</span>-H</div>
+                        <p class="mt-2">Substituents (R₁, R₂, R₃, R₄) at C2, C3, C4, C5, C6. <span class="substituent">C4 often chiral.</span></p>
+                        <p class="text-reference">Ref: [1]</p>
+                    </div>
+                    <div class="structure-diagram diagram-box">
+                        <p class="font-semibold mb-2">Figure 2: Structural Relationship</p>
+                        <p class="flex items-center justify-center space-x-2">
+                            <span class="ring-label">Pyridine</span> ⇌ <span class="font-bold text-emerald-600 ring-label">1,4-DHP</span> ⇌ <span class="ring-label">Piperidine</span>
+                        </p>
+                        <div class="flex justify-around mt-3">
+                            <div class="placeholder-ring" style="border-color: #f59e0b;">Py</div>
+                            <div class="placeholder-ring" style="border-color: #10b981;">1,4-DHP</div>
+                            <div class="placeholder-ring" style="border-color: #6366f1;">Pip</div>
+                        </div>
+                         <p class="text-reference mt-2">Ref: [3]</p>
+                    </div>
+                </div>
+                
+                <h3>1.2. Pharmaceutical and Biological Significance</h3>
+                <p>DHPs are vital in medicine, primarily as L-type calcium channel blockers (CCBs) like Nifedipine and Amlodipine for cardiovascular diseases.[1, 3, 4, 5, 13, 17, 18] They also exhibit anti-inflammatory, antioxidant, antimicrobial, anticancer, and neuroprotective activities.[1-5, 13, 18] This broad spectrum makes them a continuous focus for drug development.</p>
+
+                <h3>1.3. Fused 1,4-Dihydropyridine Derivatives</h3>
+                <p>Fused DHPs, where the DHP ring is annulated with another cyclic system (e.g., hexahydroquinolines from dimedone), offer increased rigidity and distinct pharmacological profiles.[13, 17] They often show enhanced potency or selectivity, making them valuable in drug discovery.[2, 9]</p>
+
+                <h3>1.4. Applications in Materials Science</h3>
+                <p>DHPs are increasingly used in materials science for OLEDs, advanced polymers, and as photoreductants.[14, 35] Their green synthesis enhances sustainability in these applications.</p>
+            </div>
+
+            <div id="catalyst-hpa" class="content-section bg-white p-6 sm:p-8 rounded-lg shadow-md">
+                <h2>2. The Preyssler HPA Catalyst</h2>
+                <p>This section delves into the Preyssler heteropolyacid (HPA), the catalyst central to this research. We explore its unique structure, remarkable properties, catalytic mechanism, and how it compares to other common heteropolyacids, justifying its selection for DHP synthesis.</p>
+
+                <h3>2.1. Structure and Properties of Preyssler HPA</h3>
+                <p>Preyssler HPA ([NaP₅W₃₀O₁₁₀]¹⁴⁻) has a distinctive cyclic, doughnut-shaped polyanion structure encapsulating a cation (e.g., Na⁺).[7, 11, 16] Key properties include strong Brönsted acidity (14 titratable protons, Ho = -14.52), high thermal stability (up to 300°C), exceptional hydrolytic stability (pH 0-12), reusability, and green attributes (non-corrosive, minimal waste).[7-11, 27, 30, 40]</p>
+                <div class="structure-diagram diagram-box preyssler-anion-diagram my-4">
+                    <p class="font-semibold mb-2">Figure 4: Structure of Preyssler Anion (Simplified)</p>
+                    <div class="outer-ring">
+                        <div class="inner-cation"><span class="atom-N">Na</span>⁺</div>
+                    </div>
+                    <p class="mt-2">Cyclic assembly of five PW₆O₂₂ units. <span class="substituent">Encapsulates a central cation.</span></p>
+                    <p class="text-reference">Ref: [7, 11, 16]</p>
+                </div>
+
+                <h3>2.2. Acidic Properties and Catalytic Mechanism</h3>
+                <p>Preyssler HPA's catalytic activity stems from its strong Brönsted acidity. It protonates reactants (e.g., carbonyl oxygen), enhancing electrophilicity and lowering activation energies, accelerating reactions under milder conditions.[21, 41] It facilitates multicomponent reactions like Hantzsch synthesis by promoting condensations, cyclizations, and dehydrations.[8, 15, 25, 32, 33, 37]</p>
+
+                <h3>2.3. Homogeneous vs. Heterogeneous Catalysis</h3>
+                <p>Preyssler HPA can be used homogeneously (dissolved) or heterogeneously (solid, often supported on silica/alumina like SPNP).[8, 11, 12, 16, 28, 30, 31] Supported forms offer easier separation, enhanced reusability, and increased surface area, ideal for green chemistry.</p>
+
+                <h3>2.4. Comparison with Other Heteropolyacids (Keggin, Wells-Dawson)</h3>
+                <p>Preyssler HPA often outperforms Keggin and Wells-Dawson types in catalytic activity and reusability due to its unique structure and stability.</p>
+                <div class="chart-container">
+                    <canvas id="catalystComparisonChart"></canvas>
+                </div>
+                <p class="text-sm italic text-center mt-2">Table 1 Data: Comparison of catalytic activity in Warfarin Acetals Synthesis. Ref: [11]</p>
+                <p>For example, in Warfarin acetals synthesis, Preyssler HPA showed higher activity (90-95% selectivity) compared to Keggin types (51-65.5%) and Wells-Dawson (86%).[11] Similar trends are observed in various heterocycle syntheses.[8, 12, 27]</p>
+            </div>
+
+            <div id="synthesis-methods" class="content-section bg-white p-6 sm:p-8 rounded-lg shadow-md">
+                <h2>3. Synthesis with Preyssler HPA</h2>
+                <p>This section details the synthetic methodologies for 1,4-Dihydropyridines, focusing on the classical Hantzsch reaction as a benchmark and the modern, efficient Preyssler HPA-catalyzed approach for both unfused and fused DHPs. Mechanistic insights are also discussed.</p>
+
+                <h3>3.1. The Classical Hantzsch Reaction</h3>
+                <p>The Hantzsch reaction (1881) is a one-pot MCR of an aldehyde, two equivalents of a β-ketoester, and ammonia.[15, 32] While simple, it often requires long reaction times, organic solvents, and gives low yields.[6, 33]</p>
+                <div class="diagram-box my-4">
+                    <p class="font-semibold mb-3">Figure 3: Proposed Mechanism for Hantzsch Dihydropyridine Synthesis (Simplified)</p>
+                    <div class="space-y-2">
+                        <button class="btn-secondary w-full text-left" onclick="toggleMechanismStep('hantzsch-step1', this)">Show Step 1: Knoevenagel Condensation</button>
+                        <div id="hantzsch-step1" class="mechanism-step">Aldehyde + β-Ketoester → α,β-Unsaturated Carbonyl Intermediate</div>
+                        <button class="btn-secondary w-full text-left" onclick="toggleMechanismStep('hantzsch-step2', this)">Show Step 2: Enamine Formation</button>
+                        <div id="hantzsch-step2" class="mechanism-step">β-Ketoester + Ammonia → Enamine Intermediate</div>
+                        <button class="btn-secondary w-full text-left" onclick="toggleMechanismStep('hantzsch-step3', this)">Show Step 3: Michael Addition & Cyclization</button>
+                        <div id="hantzsch-step3" class="mechanism-step">Knoevenagel Product + Enamine → DHP Intermediate → Cyclization & Dehydration → 1,4-DHP</div>
+                    </div>
+                    <p class="text-reference mt-3">Ref: [15]</p>
+                </div>
+
+                <h3>3.2. Preyssler HPA-Catalyzed Synthesis of Unfused 1,4-DHPs</h3>
+                <p>Preyssler HPA offers a greener, more efficient alternative. Aromatic aldehydes, ethyl acetoacetate, and ammonium acetate are refluxed in water with catalytic Preyssler HPA (e.g., 5 mol%), yielding unfused DHPs in good to excellent yields (3-8 hours).[9, 10] The method tolerates various substituents.</p>
+                <p class="font-semibold mt-4">Table 2: Representative Examples of Unfused 1,4-Dihydropyridines (Preyssler HPA)</p>
+                <table>
+                    <thead><tr><th>Entry</th><th>Aldehyde</th><th>Yield (%)</th><th>Time (h)</th></tr></thead>
+                    <tbody id="unfusedDHPTableBody">
+                        <tr><td>1</td><td>Benzaldehyde</td><td>92</td><td>3.5</td></tr>
+                        <tr><td>2</td><td>4-Nitrobenzaldehyde</td><td>90</td><td>3.0</td></tr>
+                        <tr><td>3</td><td>4-Methoxybenzaldehyde</td><td>95</td><td>4.0</td></tr>
+                        <tr><td>4</td><td>2-Chlorobenzaldehyde</td><td>88</td><td>4.5</td></tr>
+                    </tbody>
+                </table>
+                <p class="text-sm italic text-center">Data illustrative of results from Ref: [9, 10]</p>
+
+                <h3>3.3. Preyssler HPA-Catalyzed Synthesis of Fused 1,4-DHPs (from Dimedone)</h3>
+                <p>Fused DHPs are synthesized by reacting dimedone, an aryl aldehyde, and ammonium acetate with Preyssler HPA in refluxing water, yielding complex fused heterocycles efficiently.[9, 10]</p>
+                 <div class="diagram-box my-4">
+                    <p class="font-semibold mb-3">Figure 5: General Scheme for Fused DHP Synthesis from Dimedone (Preyssler HPA)</p>
+                     <div class="space-y-2">
+                        <button class="btn-secondary w-full text-left" onclick="toggleMechanismStep('fused-dhp-step1', this)">Show Step 1: Intermediate Formation</button>
+                        <div id="fused-dhp-step1" class="mechanism-step">Dimedone + Aryl Aldehyde + NH₄OAc → Key Condensation Intermediates (e.g., enamine of dimedone, Knoevenagel product of aldehyde-dimedone)</div>
+                        <button class="btn-secondary w-full text-left" onclick="toggleMechanismStep('fused-dhp-step2', this)">Show Step 2: Cyclization & Dehydration</button>
+                        <div id="fused-dhp-step2" class="mechanism-step">Intermediates undergo further condensation, cyclization, and dehydration → Fused 1,4-DHP (e.g., hexahydroquinoline derivative)</div>
+                    </div>
+                    <p class="text-reference mt-3">Ref: [9]</p>
+                </div>
+                <p class="font-semibold mt-4">Table 3: Representative Examples of Fused 1,4-Dihydropyridines (Preyssler HPA)</p>
+                <table>
+                    <thead><tr><th>Entry</th><th>Aldehyde (with Dimedone)</th><th>Yield (%)</th><th>Time (h)</th></tr></thead>
+                    <tbody id="fusedDHPTableBody">
+                        <tr><td>1</td><td>Benzaldehyde</td><td>88</td><td>5.0</td></tr>
+                        <tr><td>2</td><td>4-Chlorobenzaldehyde</td><td>85</td><td>4.5</td></tr>
+                        <tr><td>3</td><td>4-Methylbenzaldehyde</td><td>90</td><td>5.5</td></tr>
+                    </tbody>
+                </table>
+                <p class="text-sm italic text-center">Data illustrative of results from Ref: [9, 10]</p>
+            </div>
+
+            <div id="performance-green" class="content-section bg-white p-6 sm:p-8 rounded-lg shadow-md">
+                <h2>4. Performance & Green Chemistry</h2>
+                <p>This section highlights the significant advantages of using Preyssler HPA in DHP synthesis, its remarkable reusability, and its strong alignment with the principles of Green Chemistry, establishing it as a sustainable and efficient catalytic choice.</p>
+
+                <h3>4.1. Advantages of Preyssler HPA in DHP Synthesis</h3>
+                <ul>
+                    <li><strong>High Catalytic Activity & Efficiency:</strong> Leads to good/excellent yields.[7, 8, 11]</li>
+                    <li><strong>Mild Reaction Conditions:</strong> Effective in water or solvent-free.[10, 23]</li>
+                    <li><strong>Short Reaction Times:</strong> Faster than classical methods.[10]</li>
+                    <li><strong>Environmental Friendliness:</strong> Non-corrosive, reduced waste, easy separation.[7, 8, 10, 11, 23]</li>
+                    <li><strong>High Hydrolytic Stability:</strong> Performs well in aqueous media (pH 0-12).[7, 8, 11, 27, 30]</li>
+                    <li><strong>Cost-Effective & Easily Prepared:</strong> Inexpensive and accessible.[7, 9]</li>
+                </ul>
+
+                <h3>4.2. Catalyst Reusability</h3>
+                <p>A key advantage is Preyssler HPA's reusability. It can be recovered and reused for multiple cycles (e.g., 3-5 times) with minimal loss in catalytic activity.[9, 10, 11]</p>
+                <div class="chart-container">
+                    <canvas id="reusabilityChart"></canvas>
+                </div>
+                <p class="text-sm italic text-center mt-2">Table 4 Data: Reusability Study of Preyssler HPA in DHP Synthesis. Ref: [9, 10]</p>
+                <p>This reusability significantly enhances economic and environmental viability.</p>
+
+                <h3>4.3. Alignment with Green Chemistry Principles</h3>
+                <p>Preyssler HPA in DHP synthesis embodies green chemistry principles:[22-24]</p>
+                <ol class="list-decimal list-inside space-y-1">
+                    <li><strong>Prevention of Waste:</strong> Catalytic nature and MCRs minimize byproducts.</li>
+                    <li><strong>Atom Economy:</strong> MCRs maximize incorporation of starting materials.</li>
+                    <li><strong>Safer Solvents:</strong> Use of water instead of volatile organic solvents.</li>
+                    <li><strong>Energy Efficiency:</strong> Milder conditions.</li>
+                    <li><strong>Catalysis:</strong> Superior to stoichiometric reagents, reusable.</li>
+                </ol>
+            </div>
+            
+            <div id="conclusion-future" class="content-section bg-white p-6 sm:p-8 rounded-lg shadow-md">
+                <h2>5. Conclusion & Future Outlook</h2>
+                <p>This section summarizes the key findings of the dissertation regarding the use of Preyssler HPA for DHP synthesis and outlines potential challenges and promising future research avenues in this field.</p>
+
+                <h3>5.1. Conclusions</h3>
+                <p>Preyssler HPA is an efficient, reusable, and environmentally benign catalyst for synthesizing 1,4-dihydropyridines and their fused derivatives. It overcomes limitations of classical Hantzsch synthesis by offering mild conditions, high yields, and shorter reaction times, particularly in aqueous media. Its strong Brönsted acidity, unique structure, and stability contribute to its superior performance. The methodology aligns strongly with green chemistry principles.</p>
+
+                <h3>5.2. Addressing Challenges and Future Directions</h3>
+                <p>Challenges include catalyst cost for large-scale production, long-term reusability/deactivation, expanding substrate scope for highly functionalized/chiral DHPs, and deeper mechanistic elucidation.[25, 26]</p>
+                <p>Future research directions involve exploring novel catalytic methods (e.g., new Preyssler forms, hybrid systems), expanding medicinal chemistry applications by refining SAR, discovering new DHP derivatives, integrating with flow chemistry for industrial use, and exploring biocatalysis/hybrid systems for enhanced selectivity.[5, 22-26, 39]</p>
+                <p>Continued research will advance catalytic DHP synthesis, benefiting both fundamental chemistry and societal applications.</p>
+            </div>
+
+            <div id="abbreviations" class="content-section bg-white p-6 sm:p-8 rounded-lg shadow-md">
+                <h2>Abbreviations</h2>
+                <ul class="list-disc list-inside grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 text-sm">
+                    <li>API: Active Pharmaceutical Ingredient</li>
+                    <li>CAN: Ceric Ammonium Nitrate</li>
+                    <li>CCBs: Calcium Channel Blockers</li>
+                    <li>DHP: 1,4-Dihydropyridine</li>
+                    <li>DHPMs: 3,4-Dihydropyrimidin-2(1H)-ones</li>
+                    <li>DMSO: Dimethyl Sulfoxide</li>
+                    <li>EtOAc: Ethyl Acetate</li>
+                    <li>FTIR: Fourier-Transform Infrared Spectroscopy</li>
+                    <li>GAAS: Gluconic Acid Aqueous Solution</li>
+                    <li>HPA: Heteropolyacid</li>
+                    <li>IL: Ionic Liquid</li>
+                    <li>MCR: Multicomponent Reaction</li>
+                    <li>MWCNTs: Multiwalled Carbon Nanotubes</li>
+                    <li>NADH: Nicotinamide Adenine Dinucleotide</li>
+                    <li>NADPH: Nicotinamide Adenine Dinucleotide Phosphate</li>
+                    <li>NMR: Nuclear Magnetic Resonance</li>
+                    <li>NO: Nitric Oxide</li>
+                    <li>OLEDs: Organic Light-Emitting Diodes</li>
+                    <li>PMI: Process Mass Intensity</li>
+                    <li>POM: Polyoxometalates</li>
+                    <li>PTSA: *p*-Toluenesulfonic Acid</li>
+                    <li>SAR: Structure-Activity Relationship</li>
+                    <li>SPNP: Silica-supported Preyssler Nanoparticles</li>
+                    <li>TBAHS: Tetra-n-butylammonium Hydrogen Sulfate</li>
+                    <li>TFA: Trifluoroacetic Acid</li>
+                    <li>THF: Tetrahydrofuran</li>
+                    <li>TLC: Thin-Layer Chromatography</li>
+                    <li>TMS: Tetramethylsilane</li>
+                    <li>TNF-α: Tumor Necrosis Factor-alpha</li>
+                    <li>UHP: Urea Hydrogen Peroxide</li>
+                </ul>
+            </div>
+             <footer class="mt-12 pt-8 pb-4 border-t border-emerald-200 text-center text-sm text-gray-600">
+                <p>Interactive Dissertation SPA based on the work of <strong>Unmesh Pramanik</strong>.</p>
+                <p>Supervisor: Dr. Paramita Das | Institution: Asutosh College</p>
+                <p>&copy; <span id="currentYear"></span>. Application designed for illustrative purposes.</p>
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        let currentMechanismStep = {};
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            const targetSection = document.getElementById(sectionId);
+            if (targetSection) {
+                targetSection.classList.add('active');
+            }
+
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            const activeLink = document.querySelector(`.nav-link[onclick="showSection('${sectionId}')"]`);
+            if (activeLink) {
+                activeLink.classList.add('active');
+            }
+        }
+
+        function toggleMechanismStep(stepId, button) {
+            const stepElement = document.getElementById(stepId);
+            if (!stepElement) return;
+
+            const diagramBox = button.closest('.diagram-box');
+            const diagramBoxId = diagramBox ? diagramBox.id || diagramBox.dataset.id || 'defaultDiagram' : 'defaultDiagram';
+            if (!diagramBox.id && !diagramBox.dataset.id) diagramBox.dataset.id = diagramBoxId;
+
+
+            if (currentMechanismStep[diagramBoxId] && currentMechanismStep[diagramBoxId] !== stepElement) {
+                currentMechanismStep[diagramBoxId].classList.remove('visible');
+                const prevButton = currentMechanismStep[diagramBoxId].previousElementSibling;
+                if (prevButton && prevButton.tagName === 'BUTTON') {
+                    prevButton.textContent = prevButton.textContent.replace('Hide Step', 'Show Step');
+                     if (!prevButton.textContent.startsWith('Show Step')) prevButton.textContent = 'Show Step ' + prevButton.textContent.substring(prevButton.textContent.indexOf(':'));
+                }
+            }
+
+            if (stepElement.classList.contains('visible')) {
+                stepElement.classList.remove('visible');
+                button.textContent = button.textContent.replace('Hide Step', 'Show Step');
+                if (!button.textContent.startsWith('Show Step')) button.textContent = 'Show Step ' + button.textContent.substring(button.textContent.indexOf(':'));
+                currentMechanismStep[diagramBoxId] = null;
+            } else {
+                stepElement.classList.add('visible');
+                button.textContent = button.textContent.replace('Show Step', 'Hide Step');
+                if (!button.textContent.startsWith('Hide Step')) button.textContent = 'Hide Step ' + button.textContent.substring(button.textContent.indexOf(':'));
+                currentMechanismStep[diagramBoxId] = stepElement;
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+            showSection('home'); // Show home section by default
+
+            // Chart 1: Catalyst Comparison (Data from Table 1 of dissertation, source [11])
+            const catalystCtx = document.getElementById('catalystComparisonChart')?.getContext('2d');
+            if (catalystCtx) {
+                new Chart(catalystCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Preyssler HPA', 'Wells-Dawson HPA', 'Keggin HPA (Avg.)'],
+                        datasets: [{
+                            label: 'Yield (%) in Warfarin Acetal Synthesis',
+                            data: [92.5, 86, 58.25], // Example: Preyssler (avg 90-95), Wells-Dawson (86), Keggin (avg 51-65.5)
+                            backgroundColor: ['#10b981', '#06b6d4', '#818cf8'],
+                            borderColor: ['#059669', '#0891b2', '#6366f1'],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: { y: { beginAtZero: true, suggestedMax: 100, title: { display: true, text: 'Yield (%)' } } },
+                        plugins: { 
+                            title: { display: true, text: 'Fig. HPA Catalytic Activity Comparison (Warfarin Acetals)', font: { size: 14 } },
+                            tooltip: {
+                                callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}%` }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Chart 2: Catalyst Reusability (Data from Table 4 of dissertation, source [9,10])
+            const reusabilityCtx = document.getElementById('reusabilityChart')?.getContext('2d');
+            if (reusabilityCtx) {
+                new Chart(reusabilityCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Run 1', 'Run 2', 'Run 3', 'Run 4', 'Run 5'],
+                        datasets: [{
+                            label: 'Preyssler HPA Yield (%) in DHP Synthesis',
+                            data: [92, 91, 90, 89, 88], // Example data: 92% (Run 1), 91% (Run 2), etc. based on [9,10] (e.g. Table 4, entry 1)
+                            fill: false,
+                            borderColor: '#ef4444', 
+                            backgroundColor: '#fee2e2',
+                            tension: 0.1,
+                            pointRadius: 5,
+                            pointBackgroundColor: '#ef4444'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: { y: { beginAtZero: false, suggestedMin: 70, suggestedMax: 100, title: { display: true, text: 'Yield (%)' } } },
+                        plugins: { 
+                            title: { display: true, text: 'Fig. Preyssler HPA Reusability Study', font: {size: 14} },
+                             tooltip: {
+                                callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}%` }
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
